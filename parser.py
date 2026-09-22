@@ -1,5 +1,4 @@
 import datetime
-import html
 import re
 
 import config
@@ -21,9 +20,6 @@ HAIJAR = [
 HARI = [
     "SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU",
 ]
-
-COLUMNS = ["STO", "NO TIKET", "CUSTOMER TYPE", "REPORT DATE", "TYPE TIKET", "DURASI", "PIC"]
-
 
 def tokenize(line):
     cells = [c.strip() for c in re.split(r"[\t,;]", line.strip())]
@@ -57,6 +53,34 @@ def classify_cell(cell, fields):
         fields["type"] = cell
     elif fields["ctype"] is None and CTYPE_RE.match(cell) and cell not in config.STO_TO_REGION:
         fields["ctype"] = cell
+
+
+def records_from_text(text):
+    records = []
+    pending = []
+
+    def flush():
+        if pending:
+            records.append("\t".join(pending))
+            pending.clear()
+
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        cells = tokenize(line)
+        single_inc = len(cells) == 1 and bool(INC_RE.match(cells[0]))
+        multi_inc = any(INC_RE.match(c) for c in cells) and not single_inc
+        if multi_inc:
+            flush()
+            records.append(line)
+        elif single_inc:
+            flush()
+            pending.append(line)
+        elif pending:
+            pending.append(line)
+    flush()
+    return records
 
 
 def parse_line(line):
@@ -150,25 +174,18 @@ def render_region(region, rows, context):
     if not tanggal:
         tanggal = waktu_sekarang()
 
-    header = [title, tanggal, f"Saldo Open {region} ({len(rows)} tiket)", ""]
-
-    width = {col: len(col) for col in COLUMNS}
-    data = []
+    lines = [title, tanggal, f"Saldo Open {region} ({len(rows)} tiket)", ""]
     for r in rows:
-        cells = [r["sto"], r["ti"], r["ctype"], r["date"], r["type"], r["durasi"], r["pic"]]
-        data.append(cells)
-        for idx, col in enumerate(COLUMNS):
-            width[col] = max(width[col], len(cells[idx]))
-
-    sep = "-" * (sum(width.values()) + (len(COLUMNS) - 1) * 2)
-    body = [sep]
-    body.append("  ".join(col.ljust(width[col]) for col in COLUMNS))
-    body.append(sep)
-    for cells in data:
-        body.append("  ".join(cells[idx].ljust(width[col]) for idx, col in enumerate(COLUMNS)).rstrip())
-    body.append(sep)
-
-    return "\n".join(header) + "\n" + "\n".join(body)
+        parts = [r["sto"], r["ti"], r["ctype"]]
+        if r["date"] != "-":
+            parts.append(f"({r['date']})")
+        if r["type"] != "-":
+            parts.append(r["type"])
+        parts.append(r["durasi"])
+        if r["pic"] not in ("", "-"):
+            parts.append(r["pic"])
+        lines.append("  ".join(parts))
+    return "\n".join(lines)
 
 
 def chunk_lines(text, limit=3900):
@@ -189,14 +206,14 @@ def chunk_lines(text, limit=3900):
     for i, chunk in enumerate(chunks):
         prefix = "🔄 Lanjutan dari pesan sebelumnya" if i > 0 else ""
         body = (prefix + "\n" + chunk) if i > 0 else chunk
-        messages.append("<pre>\n" + html.escape(body) + "\n</pre>")
+        messages.append(body)
     return messages
 
 
 def build_report(text):
     rows = []
-    for line in text.splitlines():
-        row = parse_line(line)
+    for record in records_from_text(text):
+        row = parse_line(record)
         if row:
             rows.append(row)
 

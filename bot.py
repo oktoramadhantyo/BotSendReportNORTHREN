@@ -162,7 +162,7 @@ def process_report(chat_id, text, photos):
             for file_id in photos:
                 api("sendPhoto", chat_id=target, photo=file_id)
             for msg in result["regions"][region]["messages"]:
-                api("sendMessage", chat_id=target, text=msg, parse_mode="HTML")
+                api("sendMessage", chat_id=target, text=msg)
             success += 1
             count = result["regions"][region].get("count")
             detail = f" ({count} tiket)" if count else ""
