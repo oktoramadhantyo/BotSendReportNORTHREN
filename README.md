@@ -28,9 +28,11 @@ Daftar STO:
 | Perintah | Fungsi |
 |---|---|
 | `/start` `/help` | Instruksi penggunaan |
-| `/setbot` | Tautkan grup ini sebagai grup tujuan JAKBAR/JAKUT (pilih via tombol) |
+| `/setbot` | Tautkan grup ini sebagai grup tujuan JAKUT/JAKBAR/NORTHREN (pilih via tombol) |
 | `/grup` | Lihat grup tujuan yang terdaftar |
-| `/hapusgrup JAKBAR` `/hapusgrup JAKUT` | Lepaskan tautan grup tujuan |
+| `/lepasgrup` | Lepaskan status grup ini sebagai penerima (dijalankan dari dalam grup) |
+| `/lepasgrup JAKUT` `/lepasgrup JAKBAR` `/lepasgrup NORTHREN` | Lepaskan tautan region tertentu |
+| `/lepasgrup semua` | Hapus semua tautan grup tujuan |
 
 ## Instalasi Lokal
 
@@ -46,10 +48,14 @@ Daftar STO:
    python bot.py
    ```
 5. Siapkan grup tujuan:
-   - Buat grup `JAKBAR` dan `JAKUT`.
-   - Invite bot ke kedua grup dan jadikan admin.
+   - Buat grup `JAKBAR`, `JAKUT`, dan opsional `NORTHREN` (gabungan semua tiket).
+   - Invite bot ke grup-grup tersebut dan jadikan admin.
    - Di grup JAKBAR: `/setbot` → pilih Jakarta Barat.
    - Di grup JAKUT: `/setbot` → pilih Jakarta Utara.
+   - Di grup NORTHREN: `/setbot` → pilih Northren (Semua).
+   - Lepas tautan: `/lepasgrup` langsung dari dalam grup itu, atau
+     `/lepasgrup JAKUT` / `/lepasgrup JAKBAR` / `/lepasgrup NORTHREN`,
+     atau `/lepasgrup semua`.
 6. Kirim laporan dari private chat bot untuk mencoba.
 
 ## Deploy ke Render

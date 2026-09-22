@@ -23,11 +23,14 @@ START_TEXT = (
     "lalu memberi notifikasi hasil.\n\n"
     "Pengaturan grup tujuan (dilakukan sekali):\n"
     "• Buka grup JAKBAR → ketik /setbot → pilih Jakarta Barat.\n"
-    "• Buka grup JAKUT → ketik /setbot → pilih Jakarta Utara.\n\n"
+    "• Buka grup JAKUT → ketik /setbot → pilih Jakarta Utara.\n"
+    "• Buka grup NORTHREN → ketik /setbot → pilih Northren (semua tiket).\n\n"
     "Perintah lain:\n"
-    "/setbot — tautkan grup ini sebagai tujuan JAKBAR/JAKUT\n"
+    "/setbot — tautkan grup ini sebagai tujuan JAKUT/JAKBAR/NORTHREN\n"
     "/grup — lihat grup tujuan terdaftar\n"
-    "/hapusgrup JAKBAR atau JAKUT — lepaskan tautan\n"
+    "/lepasgrup — lepaskan status grup ini sebagai penerima\n"
+    "/lepasgrup JAKBAR|JAKUT|NORTHREN — lepas region tertentu\n"
+    "/lepasgrup semua — hapus semua tautan\n"
     "/help — bantuan ini"
 )
 
@@ -74,7 +77,7 @@ def pop_photos(chat_id):
 
 def status_text():
     lines = ["📋 Status grup tujuan:"]
-    for region in ("JAKUT", "JAKBAR"):
+    for region in ("JAKUT", "JAKBAR", "NORTHREN"):
         target = store.get(region)
         label = config.LABEL_WILAYAH[region]
         lines.append(f"• {label}: {target if target else '❌ belum di-set'}")
@@ -90,7 +93,7 @@ def cmd_setbot(chat_id, chat_type):
         send_message(
             chat_id,
             "⚠️ Perintah /setbot harus dijalankan dari dalam grup tujuan.\n"
-            "Buka grup JAKBAR atau JAKUT, lalu ketik /setbot di sana.",
+            "Buka grup JAKBAR, JAKUT, atau NORTHREN, lalu ketik /setbot di sana.",
         )
         return
     keyboard = {
@@ -98,7 +101,10 @@ def cmd_setbot(chat_id, chat_type):
             [
                 {"text": "🌆 Jakarta Utara (JAKUT)", "callback_data": "set:JAKUT"},
                 {"text": "🌆 Jakarta Barat (JAKBAR)", "callback_data": "set:JAKBAR"},
-            ]
+            ],
+            [
+                {"text": "🌐 Northren — Semua (JAKUT & JAKBAR)", "callback_data": "set:NORTHREN"},
+            ],
         ]
     }
     send_message(chat_id, "Pilih wilayah untuk grup ini:\n\n" + status_text(), reply_markup=keyboard)
@@ -108,13 +114,40 @@ def cmd_grup(chat_id):
     send_message(chat_id, status_text())
 
 
-def cmd_hapusgrup(chat_id, arg):
-    region = arg.upper()
-    if region not in ("JAKBAR", "JAKUT"):
-        send_message(chat_id, "Gunakan: /hapusgrup JAKBAR atau /hapusgrup JAKUT")
+def cmd_lepasgrup(chat_id, chat_type, arg):
+    mapping = {"JAKBAR": "JAKBAR", "JAKUT": "JAKUT", "NORTHREN": "NORTHREN"}
+    region = arg.strip().upper() if arg else ""
+
+    if region == "SEMUA":
+        for reg in ("JAKUT", "JAKBAR", "NORTHREN"):
+            store.clear(reg)
+        send_message(chat_id, "✅ Semua tautan grup tujuan dihapus.\n\n" + status_text())
         return
-    store.clear(region)
-    send_message(chat_id, f"✅ Tautan grup {config.LABEL_WILAYAH[region]} dilepaskan.\n\n{status_text()}")
+
+    if region:
+        if region not in mapping:
+            send_message(chat_id, "Gunakan: /lepasgrup JAKBAR|JAKUT|NORTHREN atau /lepasgrup semua")
+            return
+        store.clear(region)
+        send_message(chat_id, f"✅ Tautan grup {config.LABEL_WILAYAH[region]} dilepaskan.\n\n{status_text()}")
+        return
+
+    if chat_type not in ("group", "supergroup"):
+        send_message(
+            chat_id,
+            "⚠️ Lepas otomatis harus dijalankan dari dalam grup. "
+            "Atau gunakan /lepasgrup JAKBAR|JAKUT|NORTHREN, atau /lepasgrup semua.",
+        )
+        return
+
+    linked = [reg for reg in ("JAKUT", "JAKBAR", "NORTHREN") if store.get(reg) == str(chat_id)]
+    if not linked:
+        send_message(chat_id, "ℹ️ Grup ini belum terdaftar sebagai penerima.")
+        return
+    for reg in linked:
+        store.clear(reg)
+    labels = ", ".join(config.LABEL_WILAYAH[reg] for reg in linked)
+    send_message(chat_id, f"✅ Status grup ini sebagai penerima dilepas: {labels}.\n\n{status_text()}")
 
 
 def handle_callback(cb):
@@ -130,7 +163,7 @@ def handle_callback(cb):
         return
 
     region = data.split(":", 1)[1]
-    if region not in ("JAKUT", "JAKBAR"):
+    if region not in ("JAKUT", "JAKBAR", "NORTHREN"):
         api("answerCallbackQuery", callback_query_id=cb_id, text="Wilayah tidak dikenal")
         return
 
@@ -155,6 +188,8 @@ def process_report(chat_id, text, photos):
     for region in result["regions"]:
         target = store.get(region)
         if not target:
+            if region == "NORTHREN":
+                continue
             fail += 1
             notes.append(f"⛔ {config.LABEL_WILAYAH[region]}: grup tujuan belum di-set (ketik /setbot di sana).")
             continue
@@ -198,8 +233,8 @@ def handle_message(msg):
             cmd_setbot(chat_id, chat_type)
         elif cmd == "grup":
             cmd_grup(chat_id)
-        elif cmd == "hapusgrup":
-            cmd_hapusgrup(chat_id, arg)
+        elif cmd in ("lepasgrup", "hapusgrup"):
+            cmd_lepasgrup(chat_id, chat_type, arg)
         return
 
     if photos and caption and not text:

@@ -23,8 +23,12 @@ for _sto in JAKUT_STO:
 for _sto in JAKBAR_STO:
     STO_TO_REGION[_sto] = "JAKBAR"
 
-NAMA_WILAYAH = {"JAKUT": "JAKARTA UTARA", "JAKBAR": "JAKARTA BARAT"}
-LABEL_WILAYAH = {"JAKUT": "Jakarta Utara (JAKUT)", "JAKBAR": "Jakarta Barat (JAKBAR)"}
+NAMA_WILAYAH = {"JAKUT": "JAKARTA UTARA", "JAKBAR": "JAKARTA BARAT", "NORTHREN": "NORTHREN"}
+LABEL_WILAYAH = {
+    "JAKUT": "Jakarta Utara (JAKUT)",
+    "JAKBAR": "Jakarta Barat (JAKBAR)",
+    "NORTHREN": "Northren (JAKUT & JAKBAR)",
+}
 
 API_BASE = "https://api.telegram.org/bot{token}"
 
@@ -34,7 +38,7 @@ GROUP_FILE = BASE_DIR / "groups.json"
 class GroupStore:
     def __init__(self, path=None):
         self.path = Path(path) if path else GROUP_FILE
-        self.data = {"JAKBAR": None, "JAKUT": None}
+        self.data = {"JAKBAR": None, "JAKUT": None, "NORTHREN": None}
         self.load()
 
     def load(self):
@@ -48,7 +52,7 @@ class GroupStore:
             except Exception:
                 pass
         for region in self.data:
-            if region not in ("JAKBAR", "JAKUT"):
+            if region not in ("JAKBAR", "JAKUT", "NORTHREN"):
                 self.data.pop(region, None)
         self.save()
 

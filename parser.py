@@ -163,6 +163,18 @@ def extract_context(text):
     return title, tanggal
 
 
+def _row_line(r):
+    parts = [r["sto"], r["ti"], r["ctype"]]
+    if r["date"] != "-":
+        parts.append(f"({r['date']})")
+    if r["type"] != "-":
+        parts.append(r["type"])
+    parts.append(r["durasi"])
+    if r["pic"] not in ("", "-"):
+        parts.append(r["pic"])
+    return "  ".join(parts)
+
+
 def render_region(region, rows, context):
     title, tanggal = context[:2]
     nama = config.NAMA_WILAYAH[region]
@@ -176,15 +188,22 @@ def render_region(region, rows, context):
 
     lines = [title, tanggal, f"Saldo Open {region} ({len(rows)} tiket)", ""]
     for r in rows:
-        parts = [r["sto"], r["ti"], r["ctype"]]
-        if r["date"] != "-":
-            parts.append(f"({r['date']})")
-        if r["type"] != "-":
-            parts.append(r["type"])
-        parts.append(r["durasi"])
-        if r["pic"] not in ("", "-"):
-            parts.append(r["pic"])
-        lines.append("  ".join(parts))
+        lines.append(_row_line(r))
+    return "\n".join(lines)
+
+
+def render_northren(rows, context):
+    title = "REPORTING TIKET OPEN TTR 24 JAM NORTHREN"
+    tanggal = context[1] or waktu_sekarang()
+    lines = [title, tanggal, f"Total {len(rows)} tiket", ""]
+    for region in ("JAKBAR", "JAKUT"):
+        region_rows = [r for r in rows if r["region"] == region]
+        if not region_rows:
+            continue
+        lines.append(f"===== {region} ({len(region_rows)} tiket) =====")
+        for r in region_rows:
+            lines.append(_row_line(r))
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -254,4 +273,10 @@ def build_report(text):
             "count": len(grouped[region]),
             "passthrough": False,
         }
+    all_rows = grouped["JAKUT"] + grouped["JAKBAR"]
+    out["NORTHREN"] = {
+        "messages": chunk_lines(render_northren(all_rows, context)),
+        "count": len(all_rows),
+        "passthrough": False,
+    }
     return {"ok": True, "regions": out}
