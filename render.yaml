@@ -1,0 +1,11 @@
+services:
+  - type: worker
+    name: botsendreportnorthren
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        value: GANTI_DENGAN_TOKEN_SAMA_DENGAN_.env
+        sync: false
