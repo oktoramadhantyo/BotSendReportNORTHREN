@@ -1,3 +1,4 @@
+import json
 import sys
 import time
 
@@ -33,6 +34,8 @@ START_TEXT = (
 
 def api(method, **kwargs):
     url = f"{API_BASE}/{method}"
+    if isinstance(kwargs.get("reply_markup"), dict):
+        kwargs["reply_markup"] = json.dumps(kwargs["reply_markup"])
     try:
         resp = requests.post(url, data=kwargs, timeout=60)
         data = resp.json()
